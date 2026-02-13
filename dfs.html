@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Visualization (DFS) with User Input</title>
+    <link rel="stylesheet" href="dfsstyle.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Graph Visualization (DFS) with User Input</h1>
+        
+        <div>
+            <h3>Add Node</h3>
+            <label for="nodeId">Node ID:</label>
+            <input type="text" id="nodeId" placeholder="Node ID">
+            <button onclick="addNode()">Add Node</button>
+            <ul id="nodeList"></ul>
+        </div>
+        
+        <div>
+            <h3>Add Edge</h3>
+            <label for="startNode">From Node:</label>
+            <input type="text" id="startNode" placeholder="Start Node">
+            <label for="endNode">To Node:</label>
+            <input type="text" id="endNode" placeholder="End Node">
+            <button onclick="addEdge()">Add Edge</button>
+            <ul id="edgeList"></ul>
+        </div>
+
+        <div>
+            <h3>Start DFS</h3>
+            <label for="dfsStartNode">Start DFS from Node:</label>
+            <input type="text" id="dfsStartNode" placeholder="Start Node">
+            <button onclick="startDFS()">Start DFS</button>
+        </div>
+
+        <div class="controls">
+            <button onclick="pauseDFS()">Pause</button>
+            <button onclick="playDFS()">Play</button>
+            <button onclick="nextStep()">Next Step</button>
+            <button onclick="previousStep()">Previous Step</button>
+            <button onclick="replayDFS()">Replay</button>
+        </div>
+
+        <div id="traversalLog"></div>
+        
+        <!-- Smaller canvas size -->
+        <canvas id="graphCanvas" width="600" height="400"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("graphCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let nodes = [];
+        let visitedNodes = [];
+        let traversalSteps = [];
+        let currentStep = 0;
+        let isPaused = false;
+        let isRunning = false;
+        let dfsStartNode = null;
+        let timeoutId = null;
+
+        function addNode() {
+            const nodeId = document.getElementById("nodeId").value.trim();
+            if (nodeId && !nodes.some(node => node.id === nodeId)) {
+                nodes.push({ id: nodeId, x: Math.random() * 500 + 50, y: Math.random() * 300 + 50, edges: [] });
+                updateNodeList();
+                drawGraph();
+                document.getElementById("nodeId").value = ""; // Clear input
+            }
+        }
+
+        function addEdge() {
+            const startNodeId = document.getElementById("startNode").value.trim();
+            const endNodeId = document.getElementById("endNode").value.trim();
+
+            const startNode = nodes.find(node => node.id === startNodeId);
+            const endNode = nodes.find(node => node.id === endNodeId);
+
+            if (startNode && endNode && !startNode.edges.includes(endNodeId)) {
+                startNode.edges.push(endNodeId);
+                updateEdgeList(startNodeId, endNodeId);
+                drawGraph();
+                document.getElementById("startNode").value = "";
+                document.getElementById("endNode").value = "";
+            }
+        }
+
+        function startDFS() {
+            const startNodeId = document.getElementById("dfsStartNode").value.trim();
+            dfsStartNode = startNodeId;
+            visitedNodes = [];
+            traversalSteps = [];
+            currentStep = 0;
+            isRunning = true; // Start the traversal when DFS is initiated
+            dfs(startNodeId);
+        }
+
+        function dfs(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+
+            // If the node has already been visited, it will be marked for color change
+            if (visitedNodes.includes(nodeId)) {
+                traversalSteps.push({ nodeId, revisited: true });
+            } else {
+                visitedNodes.push(nodeId);
+                traversalSteps.push({ nodeId, revisited: false });
+            }
+
+            // Log and redraw the graph
+            logTraversal(nodeId);
+            drawGraph();
+
+            // Continue DFS for the adjacent nodes, if not paused
+            if (!isPaused) {
+                node.edges.forEach(nextNodeId => {
+                    if (!visitedNodes.includes(nextNodeId)) {
+                        timeoutId = setTimeout(() => {
+                            dfs(nextNodeId);
+                        }, 1000);
+                    }
+                });
+            }
+        }
+
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            nodes.forEach(node => {
+                node.edges.forEach(toNodeId => {
+                    const toNode = nodes.find(n => n.id === toNodeId);
+                    drawEdge(node, toNode);
+                });
+            });
+
+            nodes.forEach(drawNode);
+        }
+
+        function drawNode(node) {
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
+
+            const visitStatus = traversalSteps.find(step => step.nodeId === node.id);
+            let fillColor = "red"; 
+
+            if (visitStatus) {
+                if (visitStatus.revisited) {
+                    fillColor = "orange"; 
+                } else {
+                    fillColor = "blue"; 
+                }
+            }
+
+            if (currentStep > 0 && traversalSteps[currentStep - 1].nodeId === node.id) {
+                fillColor = "green"; 
+            }
+
+            if (currentStep < traversalSteps.length && traversalSteps[currentStep].nodeId === node.id) {
+                fillColor = "purple"; 
+            }
+
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = "white";
+            ctx.fillText(node.id, node.x - 5, node.y + 5);
+        }
+
+        function drawEdge(fromNode, toNode) {
+            ctx.beginPath();
+            ctx.moveTo(fromNode.x, fromNode.y);
+            ctx.lineTo(toNode.x, toNode.y);
+            ctx.stroke();
+        }
+
+        function logTraversal(nodeId) {
+            const logElement = document.getElementById("traversalLog");
+            const logMessage = document.createElement("div");
+            logMessage.innerText = `Visited Node: ${nodeId}`;
+            logElement.appendChild(logMessage);
+        }
+
+        function updateNodeList() {
+            const nodeList = document.getElementById("nodeList");
+            nodeList.innerHTML = "";
+            nodes.forEach(node => {
+                const li = document.createElement("li");
+                li.innerText = node.id;
+                nodeList.appendChild(li);
+            });
+        }
+
+        function updateEdgeList(from, to) {
+            const edgeList = document.getElementById("edgeList");
+            const li = document.createElement("li");
+            li.innerText = `${from} → ${to}`;
+            edgeList.appendChild(li);
+        }
+
+        function pauseDFS() {
+            isPaused = true;
+            if (timeoutId) {
+                clearTimeout(timeoutId); // Pause DFS traversal
+            }
+        }
+
+        function playDFS() {
+            if (isPaused) {
+                isPaused = false;
+                dfsStep(currentStep);
+            }
+        }
+
+        function dfsStep(stepIndex) {
+            if (stepIndex >= traversalSteps.length) return;
+            const step = traversalSteps[stepIndex];
+            logTraversal(step.nodeId); // Log this step
+            drawGraph(); // Redraw the graph at the current state
+            currentStep++;
+            
+            // Call dfs for the next adjacent node after a delay
+            if (!isPaused) {
+                setTimeout(() => {
+                    dfsStep(currentStep);
+                }, 1000); 
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < traversalSteps.length) {
+                currentStep++;
+                drawGraph();
+            }
+        }
+
+        function previousStep() {
+            if (currentStep > 0) {
+                currentStep--;
+                drawGraph();
+            }
+        }
+
+        function replayDFS() {
+            visitedNodes = [];
+            traversalSteps = [];
+            currentStep = 0;
+            drawGraph();
+            dfs(dfsStartNode);
+        }
+    </script>
+</body>
+</html>

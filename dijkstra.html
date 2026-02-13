@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Visualization (Dijkstra) with User Input</title>
+    <link rel="stylesheet" href="dijkstrastyle.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Graph Visualization (Dijkstra) with User Input</h1>
+        
+        <div>
+            <h3>Add Node</h3>
+            <label for="nodeId">Node ID:</label>
+            <input type="text" id="nodeId" placeholder="Node ID">
+            <button onclick="addNode()">Add Node</button>
+            <ul id="nodeList"></ul>
+        </div>
+        
+        <div>
+            <h3>Add Edge</h3>
+            <label for="startNode">From Node:</label>
+            <input type="text" id="startNode" placeholder="Start Node">
+            <label for="endNode">To Node:</label>
+            <input type="text" id="endNode" placeholder="End Node">
+            <label for="weight">Edge Weight:</label>
+            <input type="number" id="weight" placeholder="Edge Weight">
+            <button onclick="addEdge()">Add Edge</button>
+            <ul id="edgeList"></ul>
+        </div>
+
+        <div>
+            <h3>Start Dijkstra's Algorithm</h3>
+            <label for="dijkstraStartNode">Start from Node:</label>
+            <input type="text" id="dijkstraStartNode" placeholder="Start Node">
+            <button onclick="startDijkstra()">Start Dijkstra</button>
+        </div>
+
+        <div class="controls">
+            <button onclick="pauseDijkstra()">Pause</button>
+            <button onclick="playDijkstra()">Play</button>
+            <button onclick="nextStep()">Next Step</button>
+            <button onclick="previousStep()">Previous Step</button>
+            <button onclick="replayDijkstra()">Replay</button>
+        </div>
+
+        <div id="traversalLog"></div>
+        
+        <!-- Smaller canvas size -->
+        <canvas id="graphCanvas" width="600" height="400"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("graphCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let nodes = [];
+        let edges = [];
+        let distances = {};
+        let previousNodes = {};
+        let visitedNodes = new Set();
+        let traversalSteps = [];
+        let currentStep = 0;
+        let isPaused = false;
+        let isRunning = false;
+        let dijkstraStartNode = null;
+
+        // Add Node to the graph
+        function addNode() {
+            const nodeId = document.getElementById("nodeId").value.trim();
+            if (nodeId && !nodes.some(node => node.id === nodeId)) {
+                nodes.push({ id: nodeId, x: Math.random() * 500 + 50, y: Math.random() * 300 + 50 });
+                updateNodeList();
+                drawGraph();
+                document.getElementById("nodeId").value = ""; // Clear input
+            }
+        }
+
+        // Add Edge between nodes
+        function addEdge() {
+            const startNodeId = document.getElementById("startNode").value.trim();
+            const endNodeId = document.getElementById("endNode").value.trim();
+            const weight = parseInt(document.getElementById("weight").value.trim());
+
+            const startNode = nodes.find(node => node.id === startNodeId);
+            const endNode = nodes.find(node => node.id === endNodeId);
+
+            if (startNode && endNode && weight >= 0) {
+                edges.push({ from: startNodeId, to: endNodeId, weight });
+                updateEdgeList(startNodeId, endNodeId, weight);
+                drawGraph();
+                document.getElementById("startNode").value = "";
+                document.getElementById("endNode").value = "";
+                document.getElementById("weight").value = "";
+            }
+        }
+
+        // Start Dijkstra's algorithm
+        function startDijkstra() {
+            const startNodeId = document.getElementById("dijkstraStartNode").value.trim();
+            dijkstraStartNode = startNodeId;
+            distances = {};
+            previousNodes = {};
+            visitedNodes.clear();
+            traversalSteps = [];
+            currentStep = 0;
+            isRunning = true;
+            initializeDijkstra(startNodeId);
+            dijkstraAlgorithm();
+        }
+
+        // Initialize distances and previous nodes
+        function initializeDijkstra(startNodeId) {
+            nodes.forEach(node => {
+                distances[node.id] = Infinity;
+                previousNodes[node.id] = null;
+            });
+            distances[startNodeId] = 0;
+            traversalSteps.push({ nodeId: startNodeId, distance: 0 });
+        }
+
+        // Dijkstra's algorithm (relaxing edges)
+        function dijkstraAlgorithm() {
+            if (visitedNodes.size === nodes.length) {
+                isRunning = false;
+                return; // All nodes are visited, stop the algorithm
+            }
+
+            let closestNode = null;
+            let minDistance = Infinity;
+
+            // Find the unvisited node with the smallest distance
+            nodes.forEach(node => {
+                if (!visitedNodes.has(node.id) && distances[node.id] < minDistance) {
+                    minDistance = distances[node.id];
+                    closestNode = node;
+                }
+            });
+
+            // Mark the node as visited
+            visitedNodes.add(closestNode.id);
+
+            // Relax edges
+            edges.forEach(edge => {
+                const { from, to, weight } = edge;
+                if (from === closestNode.id && !visitedNodes.has(to)) {
+                    const newDist = distances[from] + weight;
+                    if (newDist < distances[to]) {
+                        distances[to] = newDist;
+                        previousNodes[to] = from;
+                        traversalSteps.push({ nodeId: to, distance: distances[to] });
+                    }
+                }
+            });
+
+            // Log traversal and redraw the graph
+            logTraversal();
+            drawGraph();
+        }
+
+        // Redraw the graph
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            edges.forEach(edge => {
+                const fromNode = nodes.find(n => n.id === edge.from);
+                const toNode = nodes.find(n => n.id === edge.to);
+                drawEdge(fromNode, toNode, edge.weight);
+            });
+
+            nodes.forEach(drawNode);
+        }
+
+        // Draw each node on the canvas
+        function drawNode(node) {
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
+
+            let fillColor = "red";  // Default color for nodes
+
+            // Color based on the traversal step
+            if (currentStep < traversalSteps.length) {
+                const step = traversalSteps[currentStep];
+                if (step.nodeId === node.id) {
+                    fillColor = "purple";  // Color for the current step node
+                }
+            }
+
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = "white";
+            ctx.fillText(node.id, node.x - 5, node.y + 5);
+        }
+
+        // Draw edges between nodes
+        function drawEdge(fromNode, toNode, weight) {
+            ctx.beginPath();
+            ctx.moveTo(fromNode.x, fromNode.y);
+            ctx.lineTo(toNode.x, toNode.y);
+            ctx.stroke();
+            ctx.fillText(weight, (fromNode.x + toNode.x) / 2, (fromNode.y + toNode.y) / 2);
+        }
+
+        // Log traversal steps
+        function logTraversal() {
+            const logElement = document.getElementById("traversalLog");
+            const logMessage = document.createElement("div");
+            const currentNode = traversalSteps[currentStep];
+            logMessage.innerText = `Node: ${currentNode.nodeId}, Distance: ${distances[currentNode.nodeId]}`;
+            logElement.appendChild(logMessage);
+        }
+
+        // Update the node list in the UI
+        function updateNodeList() {
+            const nodeList = document.getElementById("nodeList");
+            nodeList.innerHTML = "";
+            nodes.forEach(node => {
+                const li = document.createElement("li");
+                li.innerText = node.id;
+                nodeList.appendChild(li);
+            });
+        }
+
+        // Update the edge list in the UI
+        function updateEdgeList(fromNodeId, toNodeId, weight) {
+            const edgeList = document.getElementById("edgeList");
+            const li = document.createElement("li");
+            li.innerText = `${fromNodeId} -> ${toNodeId} (Weight: ${weight})`;
+            edgeList.appendChild(li);
+        }
+
+        // Pause the algorithm
+        function pauseDijkstra() {
+            isPaused = true;
+        }
+
+        // Play the algorithm
+        function playDijkstra() {
+            isPaused = false;
+            dijkstraStep(currentStep);
+        }
+
+        // Move to the next step
+        function nextStep() {
+            if (currentStep < traversalSteps.length - 1) {
+                currentStep++;
+                drawGraph();
+                logTraversal();
+            }
+        }
+
+        // Move to the previous step
+        function previousStep() {
+            if (currentStep > 0) {
+                currentStep--;
+                drawGraph();
+                logTraversal();
+            }
+        }
+
+        // Replay the Dijkstra algorithm
+        function replayDijkstra() {
+            distances = {};
+            previousNodes = {};
+            visitedNodes.clear();
+            traversalSteps = [];
+            currentStep = 0;
+            drawGraph();
+            startDijkstra(dijkstraStartNode);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+/* General body styles */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+}
+
+/* Container that holds the whole content */
+.container {
+    width: 80%;
+    max-width: 900px;
+    margin: 50px auto;
+    background-color: #fff;
+    padding: 30px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+/* Header styles */
+h1 {
+    color: #333;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+h3 {
+    color: #333;
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 20px;
+}
+
+/* Labels for inputs */
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+/* Styles for the input fields */
+input[type="text"], input[type="number"] {
+    width: calc(100% - 22px);
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+/* Styles for buttons */
+button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 12px 18px;
+    font-size: 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 20px;
+    display: inline-block;
+}
+
+button:hover {
+    background-color: #28a745;
+}
+
+/* Styles for the list of nodes and edges */
+ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin-top: 0;
+}
+
+ul li {
+    background-color: #e9ecef;
+    padding: 8px 12px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    font-size: 16px;
+    color: #555;
+}
+
+/* Styles for the graph output and traversal logs */
+#output {
+    font-size: 18px;
+    color: #28a745;
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* Canvas styles for the graph */
+canvas {
+    border: 1px solid #ccc;
+    display: block;
+    margin: 20px auto;
+    background-color: #fafafa;
+}
+
+/* Container divs for better spacing */
+.container div {
+    margin-bottom: 25px;
+}
+
+/* Styling for controls section */
+.controls {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.controls button {
+    background-color: #28a745;
+    padding: 12px 18px;
+    font-size: 16px;
+    border-radius: 4px;
+    margin: 5px;
+}
+
+.controls button:hover {
+    background-color: #218838;
+}
+
+.controls button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Styling for the logs during the Bellman-Ford traversal */
+#traversalLog {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+#traversalLog div {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 5px;
+}

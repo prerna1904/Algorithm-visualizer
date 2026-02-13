@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Visualization (BFS) with User Input</title>
+    <link rel="stylesheet" href="bfsstyle.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Graph Visualization (BFS) with User Input</h1>
+        
+        <div>
+            <h3>Add Node</h3>
+            <label for="nodeId">Node ID:</label>
+            <input type="text" id="nodeId" placeholder="Node ID">
+            <button onclick="addNode()">Add Node</button>
+            <ul id="nodeList"></ul>
+        </div>
+        
+        <div>
+            <h3>Add Edge</h3>
+            <label for="startNode">From Node:</label>
+            <input type="text" id="startNode" placeholder="Start Node">
+            <label for="endNode">To Node:</label>
+            <input type="text" id="endNode" placeholder="End Node">
+            <button onclick="addEdge()">Add Edge</button>
+            <ul id="edgeList"></ul>
+        </div>
+
+        <div>
+            <h3>Start BFS</h3>
+            <label for="bfsStartNode">Start BFS from Node:</label>
+            <input type="text" id="bfsStartNode" placeholder="Start Node">
+            <button onclick="startBFS()">Start BFS</button>
+        </div>
+
+        <div class="controls">
+            <button onclick="pauseBFS()">Pause</button>
+            <button onclick="playBFS()">Play</button>
+            <button onclick="nextBFSStep()">Next Step</button>
+            <button onclick="previousBFSStep()">Previous Step</button>
+            <button onclick="replayBFS()">Replay</button>
+        </div>
+
+        <div id="traversalLog"></div>
+        
+        <!-- Smaller canvas size with a border around it -->
+        <div class="graph-container">
+            <canvas id="graphCanvas" width="600" height="400"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("graphCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let nodes = [];
+        let visitedNodes = [];
+        let traversalSteps = [];
+        let currentStep = 0;
+        let isPaused = false;
+        let isRunning = false;
+        let bfsStartNode = null;
+        let timeoutId = null;
+
+        function addNode() {
+            const nodeId = document.getElementById("nodeId").value.trim();
+            if (nodeId && !nodes.some(node => node.id === nodeId)) {
+                nodes.push({ id: nodeId, x: Math.random() * 500 + 50, y: Math.random() * 300 + 50, edges: [] });
+                updateNodeList();
+                drawGraph();
+                document.getElementById("nodeId").value = ""; // Clear input
+            }
+        }
+
+        function addEdge() {
+            const startNodeId = document.getElementById("startNode").value.trim();
+            const endNodeId = document.getElementById("endNode").value.trim();
+
+            const startNode = nodes.find(node => node.id === startNodeId);
+            const endNode = nodes.find(node => node.id === endNodeId);
+
+            if (startNode && endNode && !startNode.edges.includes(endNodeId)) {
+                startNode.edges.push(endNodeId);
+                updateEdgeList(startNodeId, endNodeId);
+                drawGraph();
+                document.getElementById("startNode").value = "";
+                document.getElementById("endNode").value = "";
+            }
+        }
+
+        function startBFS() {
+            const startNodeId = document.getElementById("bfsStartNode").value.trim();
+            bfsStartNode = startNodeId;
+            visitedNodes = [];
+            traversalSteps = [];
+            currentStep = 0;
+            isRunning = true; // Start the traversal when BFS is initiated
+            bfs(startNodeId);
+        }
+
+        function bfs(startNodeId) {
+            const queue = [startNodeId];
+            visitedNodes.push(startNodeId);
+            traversalSteps.push({ nodeId: startNodeId, revisited: false });
+            
+            logTraversal(startNodeId);
+            drawGraph();
+
+            while (queue.length > 0 && !isPaused) {
+                const nodeId = queue.shift();
+                const node = nodes.find(n => n.id === nodeId);
+
+                if (!node) continue;
+
+                node.edges.forEach(nextNodeId => {
+                    if (!visitedNodes.includes(nextNodeId)) {
+                        visitedNodes.push(nextNodeId);
+                        traversalSteps.push({ nodeId: nextNodeId, revisited: false });
+                        queue.push(nextNodeId);
+
+                        logTraversal(nextNodeId);
+                        drawGraph();
+                    }
+                });
+            }
+        }
+
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            nodes.forEach(node => {
+                node.edges.forEach(toNodeId => {
+                    const toNode = nodes.find(n => n.id === toNodeId);
+                    drawEdge(node, toNode);
+                });
+            });
+
+            nodes.forEach(drawNode);
+        }
+
+        function drawNode(node) {
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
+
+            const visitStatus = traversalSteps.find(step => step.nodeId === node.id);
+            let fillColor = "red"; 
+
+            if (visitStatus) {
+                if (visitStatus.revisited) {
+                    fillColor = "orange"; 
+                } else {
+                    fillColor = "blue"; 
+                }
+            }
+
+            if (currentStep > 0 && traversalSteps[currentStep - 1].nodeId === node.id) {
+                fillColor = "green"; 
+            }
+
+            if (currentStep < traversalSteps.length && traversalSteps[currentStep].nodeId === node.id) {
+                fillColor = "purple"; 
+            }
+
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = "white";
+            ctx.fillText(node.id, node.x - 5, node.y + 5);
+        }
+
+        function drawEdge(fromNode, toNode) {
+            ctx.beginPath();
+            ctx.moveTo(fromNode.x, fromNode.y);
+            ctx.lineTo(toNode.x, toNode.y);
+            ctx.stroke();
+        }
+
+        function logTraversal(nodeId) {
+            const logElement = document.getElementById("traversalLog");
+            const logMessage = document.createElement("div");
+            logMessage.innerText = `Visited Node: ${nodeId}`;
+            logElement.appendChild(logMessage);
+        }
+
+        function updateNodeList() {
+            const nodeList = document.getElementById("nodeList");
+            nodeList.innerHTML = "";
+            nodes.forEach(node => {
+                const li = document.createElement("li");
+                li.innerText = node.id;
+                nodeList.appendChild(li);
+            });
+        }
+
+        function updateEdgeList(from, to) {
+            const edgeList = document.getElementById("edgeList");
+            const li = document.createElement("li");
+            li.innerText = `${from} → ${to}`;
+            edgeList.appendChild(li);
+        }
+
+        function pauseBFS() {
+            isPaused = true;
+        }
+
+        function playBFS() {
+            if (isPaused) {
+                isPaused = false;
+                bfsStep(currentStep);
+            }
+        }
+
+        function bfsStep(stepIndex) {
+            if (stepIndex >= traversalSteps.length) return;
+            const step = traversalSteps[stepIndex];
+            logTraversal(step.nodeId); // Log this step
+            drawGraph(); // Redraw the graph at the current state
+            currentStep++;
+            
+            // Call bfs for the next adjacent node after a delay
+            if (!isPaused) {
+                setTimeout(() => {
+                    bfsStep(currentStep);
+                }, 1000); 
+            }
+        }
+
+        function nextBFSStep() {
+            if (currentStep < traversalSteps.length) {
+                currentStep++;
+                drawGraph();
+            }
+        }
+
+        function previousBFSStep() {
+            if (currentStep > 0) {
+                currentStep--;
+                drawGraph();
+            }
+        }
+
+        function replayBFS() {
+            visitedNodes = [];
+            traversalSteps = [];
+            currentStep = 0;
+            drawGraph();
+            bfs(bfsStartNode);
+        }
+    </script>
+</body>
+</html>
